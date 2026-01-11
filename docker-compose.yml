@@ -1,5 +1,4 @@
 services:
-  # PostgreSQL Database
   postgres:
     image: postgres:15
     container_name: crm_imob_db
@@ -20,12 +19,11 @@ services:
       interval: 10s
     restart: unless-stopped
 
-  # Backend API
-  backend:
+  app:
     build:
-      context: ./crm_imob_backend
+      context: .
       dockerfile: Dockerfile
-    container_name: crm_imob_backend
+    container_name: crm_imob_app
     environment:
       PORT: ${PORT:-3001}
       NODE_ENV: ${NODE_ENV:-development}
@@ -40,32 +38,13 @@ services:
       ASAAS_BASE_URL: ${ASAAS_BASE_URL:-https://sandbox.asaas.com/api/v3}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       SENTRY_DSN: ${SENTRY_DSN}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001/api/v1}
     ports:
-      - "${PORT:-3001}:3001"
+      - "3000:3000"
+      - "3001:3001"
     depends_on:
       postgres:
         condition: service_healthy
-    volumes:
-      - ./crm_imob_backend/src:/app/src
-      - ./crm_imob_backend/prisma:/app/prisma
-      - ./crm_imob_backend/whatsapp_data:/app/whatsapp_data
-    networks:
-      - crm_network
-    restart: unless-stopped
-
-  # Frontend
-  frontend:
-    build:
-      context: ./crm_imob_frontend
-      dockerfile: Dockerfile
-    container_name: crm_imob_frontend
-    environment:
-      NODE_ENV: ${NODE_ENV:-production}
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://backend:3001/api/v1}
-    ports:
-      - "3000:3000"
-    depends_on:
-      - backend
     networks:
       - crm_network
     restart: unless-stopped

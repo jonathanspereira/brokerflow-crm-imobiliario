@@ -7,7 +7,8 @@
 
 BrokerFlow é um CRM imobiliário completo, pronto para uso em produção via Docker. Inclui frontend (Next.js), backend (Node.js/Express/Prisma), banco de dados PostgreSQL e integrações modernas (WhatsApp, billing, documentos, times, RBAC, etc).
 
-## 🚀 Deploy Rápido com Docker
+
+## 🚀 Deploy Rápido com Docker (Imagem Única)
 
 1. Clone o repositório:
   ```bash
@@ -17,14 +18,31 @@ BrokerFlow é um CRM imobiliário completo, pronto para uso em produção via Do
 2. Configure as variáveis de ambiente:
   - Copie `.env.production.example` para `.env.production` e ajuste os valores (veja instruções no próprio arquivo).
   - Configure secrets seguros para JWT, ENCRYPTION_KEY, senhas e URLs.
-3. Execute o build e o deploy:
+3. Build e deploy usando a imagem unificada (backend + frontend):
   ```bash
-  docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build
+  docker compose up --build
+  ```
+  Ou, para buildar e rodar manualmente:
+  ```bash
+  docker build -t seu-usuario/brokerflow-crm:latest .
+  docker run --env-file .env.production -p 3000:3000 -p 3001:3001 seu-usuario/brokerflow-crm:latest
   ```
 4. Acesse:
   - **Frontend**: http://localhost:3000
   - **API**: http://localhost:3001/api/v1
   - **Swagger**: http://localhost:3001/api-docs
+
+### Publicando no Docker Hub
+
+1. Faça login:
+  ```bash
+  docker login
+  ```
+2. Build e envie a imagem:
+  ```bash
+  docker build -t seu-usuario/brokerflow-crm:latest .
+  docker push seu-usuario/brokerflow-crm:latest
+  ```
 
 > Para produção, utilize bancos e secrets externos, e configure variáveis de ambiente seguras.
 

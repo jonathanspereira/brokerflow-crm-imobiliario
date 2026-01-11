@@ -1,43 +1,17 @@
-#!/bin/bash
+#!/bin/sh
+# Script para rodar backend e frontend juntos
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+# Inicia backend
+node ./crm_imob_backend/dist/index.js &
+BACK_PID=$!
 
-echo -e "${YELLOW}🚀 Starting BrokerFlow CRM Application${NC}"
-echo ""
+# Inicia frontend
+cd ./crm_imob_frontend && npm start &
+FRONT_PID=$!
 
-# Check if Docker is installed
-if ! command -v docker &> /dev/null; then
-    echo -e "${RED}❌ Docker is not installed. Please install Docker first.${NC}"
-    exit 1
-fi
-
-# Check if docker-compose is installed (either standalone or plugin)
-if command -v docker-compose &> /dev/null; then
-    DOCKER_COMPOSE="docker-compose"
-elif docker compose version &> /dev/null; then
-    DOCKER_COMPOSE="docker compose"
-else
-    echo -e "${RED}❌ docker-compose is not installed. Please install docker-compose first.${NC}"
-    exit 1
-fi
-
-echo -e "${GREEN}✓ Docker and docker-compose are installed${NC}"
-echo ""
-
-# Build and start services
-echo -e "${YELLOW}📦 Building and starting services...${NC}"
-$DOCKER_COMPOSE up -d
-
-echo ""
-echo -e "${YELLOW}⏳ Waiting for services to be ready...${NC}"
-sleep 10
-
-# Check if services are running
-if $DOCKER_COMPOSE ps | grep -q "crm_imob_backend"; then
+# Espera ambos terminarem
+wait $BACK_PID
+wait $FRONT_PID
     echo -e "${GREEN}✓ Backend is running${NC}"
 else
     echo -e "${RED}❌ Backend failed to start${NC}"
