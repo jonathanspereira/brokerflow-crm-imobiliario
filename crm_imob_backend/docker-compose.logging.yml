@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  elasticsearch:
+    image: docker.io/library/elasticsearch:8.13.4
+    container_name: elk-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g
+    ports:
+      - "9200:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  kibana:
+    image: docker.io/library/kibana:8.13.4
+    container_name: elk-kibana
+    ports:
+      - "5601:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+
+  filebeat:
+    image: docker.io/library/beats/filebeat:8.13.4
+    container_name: elk-filebeat
+    user: root
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./logging/filebeat.docker.yml:/usr/share/filebeat/filebeat.yml:ro
+    command: ["--strict.perms=false", "-e"]
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+volumes:
+  es_data:

@@ -1,0 +1,30 @@
+filebeat.inputs:
+  - type: filestream
+    id: docker-containers
+    paths:
+      - /var/lib/docker/containers/*/*.log
+    processors:
+      - add_docker_metadata: ~
+      - decode_json_fields:
+          fields: ["message"]
+          target: json
+          overwrite_keys: false
+          add_error_key: true
+
+setup.template.enabled: false
+setup.ilm.enabled: false
+
+output.elasticsearch:
+  hosts: ["${ELASTICSEARCH_HOSTS:http://elasticsearch:9200}"]
+  allow_older_versions: true
+
+processors:
+  - drop_event:
+      when:
+        or:
+          - equals:
+              container.image.name: "docker.io/library/elasticsearch:8.13.4"
+          - equals:
+              container.image.name: "docker.io/library/kibana:8.13.4"
+          - equals:
+              container.image.name: "docker.io/library/beats/filebeat:8.13.4"

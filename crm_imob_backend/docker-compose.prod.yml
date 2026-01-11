@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  backend:
+    image: ${BACKEND_IMAGE:-crm-backend:test}
+    container_name: crm_imob_backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: ${PORT:-3001}
+      # Secrets via Docker secrets (preferidos em produção)
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
+      ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
+      DATABASE_URL_FILE: /run/secrets/database_url
+      # Configuração de CORS obrigatória para produção
+      CORS_ORIGIN: ${CORS_ORIGIN:?CORS_ORIGIN must be set}
+      # WhatsApp
+      WHATSAPP_HEADLESS: ${WHATSAPP_HEADLESS:-true}
+      WHATSAPP_DATA_PATH: ${WHATSAPP_DATA_PATH:-/app/whatsapp_data}
+    secrets:
+      - jwt_secret
+      - encryption_key
+      - database_url
+    ports:
+      - "${PORT:-3001}:3001"
+    volumes:
+      - ./whatsapp_data:${WHATSAPP_DATA_PATH:-/app/whatsapp_data}
+    depends_on:
+      redis:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  redis:
+    image: docker.io/library/redis:7.2-alpine
+    container_name: crm_imob_redis
+    command: ["redis-server", "--save", "60", "1000", "--loglevel", "notice"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+
+# Secrets são definidos no arquivo docker-compose.secrets.yml
+# Execute com:
+#   docker compose -f docker-compose.prod.yml -f docker-compose.secrets.yml up -d

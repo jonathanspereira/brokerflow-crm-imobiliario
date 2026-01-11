@@ -1,0 +1,351 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =========================
+// Enums
+// =========================
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  AUTONOMO
+  GESTOR
+  CORRETOR
+}
+
+// =========================
+// Multi-tenant core models
+// =========================
+
+model Agencia {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  equipes    Equipe[]
+  users      User[]
+  leads      Lead[]
+  imoveis    Imovel[]
+  vendas     Venda[]
+  simulacoes Simulacao[]
+
+  @@map("agencias")
+}
+
+model Equipe {
+  id        String   @id @default(cuid())
+  agenciaId String
+  name      String
+  gestorId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  agencia Agencia @relation(fields: [agenciaId], references: [id], onDelete: Cascade)
+  membros User[]
+  gestor  User?   @relation("EquipeGestor", fields: [gestorId], references: [id])
+
+  @@map("equipes")
+}
+
+// User Model
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(CORRETOR)
+  agenciaId String
+  equipeId  String?
+  lifetimeAccess Boolean @default(false) // Acesso vitalício (bypassa verificação de assinatura)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  agencia            Agencia       @relation(fields: [agenciaId], references: [id], onDelete: Cascade)
+  equipe             Equipe?       @relation(fields: [equipeId], references: [id])
+  vendas             Venda[]       @relation("BrokerVendas")
+  equipesGerenciadas Equipe[]      @relation("EquipeGestor")
+  leadsAtribuidos    Lead[]        @relation("LeadAssignedTo")
+  simulacoesCriadas  Simulacao[]   @relation("UserCreatedSimulacoes")
+  refreshTokens      RefreshToken[]
+
+  // Índices para melhorar performance
+  @@index([agenciaId])
+  @@index([equipeId])
+  @@index([role])
+  @@map("users")
+}
+
+// WhatsApp Session Model
+model WhatsAppSession {
+  id          String    @id @default(cuid())
+  phoneNumber String?   @unique
+  status      String    @default("inactive") // active, inactive, expired
+  qrCode      String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  expiresAt   DateTime?
+
+  // Relations
+  chats    WhatsAppChat[]
+  messages WhatsAppMessage[]
+
+  @@map("whatsapp_sessions")
+}
+
+// WhatsApp Chat Model
+model WhatsAppChat {
+  id          String   @id @default(cuid())
+  sessionId   String
+  chatName    String
+  phone       String?
+  avatar      String?
+  lastMessage String?
+  time        String?
+  unread      Int      @default(0)
+  isGroup     Boolean  @default(false)
+  isBroadcast Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  session  WhatsAppSession   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  messages WhatsAppMessage[]
+
+  @@unique([sessionId, chatName])
+  @@map("whatsapp_chats")
+}
+
+// WhatsApp Message Model
+model WhatsAppMessage {
+  id              String   @id @default(cuid())
+  sessionId       String
+  chatId          String
+  content         String
+  timestamp       String
+  fromMe          Boolean
+  type            String   @default("text") // text, image, document, video, audio
+  status          String   @default("sent") // sent, delivered, read, error
+  hasMedia        Boolean  @default(false)
+  mediaUrl        String?
+  mediaFileName   String?
+  quotedMessageId String?
+  quotedContent   String?
+  quotedAuthor    String?
+  createdAt       DateTime @default(now())
+
+  // Relations
+  session WhatsAppSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  chat    WhatsAppChat    @relation(fields: [chatId], references: [id], onDelete: Cascade)
+
+  @@map("whatsapp_messages")
+}
+
+// Lead Model (para integração com CRM)
+model Lead {
+  id            String   @id @default(cuid())
+  name          String
+  email         String?  @unique
+  phone         String?
+  whatsappPhone String?
+  // Armazenamento seguro de CPF:
+  // - `cpf` guarda um hash determinístico (HMAC-SHA256) para unicidade e busca
+  // - `cpfEnc` guarda o valor criptografado para exibição controlada
+  cpf           String?  @unique
+  cpfEnc        String?
+  status        String   @default("new") // new, contacted, qualified, proposal, closed
+  source        String?
+  notes         String?
+  agenciaId     String
+  assignedToId  String?
+  equipeId      String?
+  imovelId      String?  // Imóvel de interesse associado
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  agencia    Agencia     @relation(fields: [agenciaId], references: [id], onDelete: Cascade)
+  assignedTo User?       @relation("LeadAssignedTo", fields: [assignedToId], references: [id])
+  imovel     Imovel?     @relation("LeadImovel", fields: [imovelId], references: [id])
+  simulacoes Simulacao[]
+  vendas     Venda[]     @relation("LeadVendas")
+  documents  DocumentHistory[]
+
+  // Índices para melhorar performance
+  @@index([agenciaId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([agenciaId, status])
+  @@index([assignedToId])
+  @@map("leads")
+}
+// Refresh Token para rotação e revogação
+model RefreshToken {
+  id         String   @id @default(cuid())
+  userId     String
+  tokenHash  String   @unique
+  revoked    Boolean  @default(false)
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// Imóvel Model (unidades/estoque)
+model Imovel {
+  id        String   @id @default(cuid())
+  agenciaId String
+  codigo    String
+  title     String?
+  address   String?
+  projeto   String?
+  status    String   @default("Disponivel")
+  valor     Float?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  agencia Agencia @relation(fields: [agenciaId], references: [id], onDelete: Cascade)
+  leads   Lead[]  @relation("LeadImovel")
+  vendas  Venda[]
+
+  // Índices para melhorar performance
+  @@unique([agenciaId, codigo])
+  @@index([agenciaId])
+  @@index([status])
+  @@map("imoveis")
+}
+
+// Modelos de documento (templates com placeholders Handlebars)
+model DocumentModel {
+  id        String   @id @default(cuid())
+  name      String
+  content   String   // HTML com placeholders Handlebars
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  documents DocumentHistory[]
+
+  @@map("document_models")
+}
+
+// Histórico de documentos gerados e editados
+model DocumentHistory {
+  id              String   @id @default(cuid())
+  leadId          String
+  imovelId        String?
+  modelId         String
+  modelName       String   // Nome do modelo no momento da geração
+  content         String   @db.Text // HTML editado final
+  proposalValue   Float?
+  createdById     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  lead  Lead           @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  model DocumentModel  @relation(fields: [modelId], references: [id])
+
+  @@map("document_history")
+}
+
+// Venda Model (negócio fechado)
+model Venda {
+  id             String   @id @default(cuid())
+  agenciaId      String
+  leadId         String?
+  imovelId       String?
+  brokerId       String?
+  totalValue     Float
+  commissionRate Float    @default(0.03)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  agencia  Agencia           @relation(fields: [agenciaId], references: [id], onDelete: Cascade)
+  lead     Lead?             @relation("LeadVendas", fields: [leadId], references: [id])
+  imovel   Imovel?           @relation(fields: [imovelId], references: [id])
+  broker   User?             @relation("BrokerVendas", fields: [brokerId], references: [id])
+  parcelas ComissaoParcela[]
+
+  // Índices para melhorar performance
+  @@index([agenciaId])
+  @@index([brokerId])
+  @@index([createdAt])
+  @@map("vendas")
+}
+
+// Parcela de Comissão (split por parcela)
+model ComissaoParcela {
+  id            String    @id @default(cuid())
+  vendaId       String
+  parcelaNumero Int
+  valor         Float
+  dueDate       DateTime
+  paidAt        DateTime?
+  status        String    @default("pending")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  venda Venda @relation(fields: [vendaId], references: [id], onDelete: Cascade)
+
+  @@map("comissao_parcelas")
+}
+
+// Simulação de pagamento (propostas)
+model Simulacao {
+  id           String   @id @default(cuid())
+  agenciaId    String
+  leadId       String
+  createdById  String?
+  totalPrice   Float
+  entryValue   Float?
+  parcels      Int?
+  monthlyValue Float?
+  bankName     String?
+  data         Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  agencia   Agencia @relation(fields: [agenciaId], references: [id], onDelete: Cascade)
+  lead      Lead    @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  createdBy User?   @relation("UserCreatedSimulacoes", fields: [createdById], references: [id])
+
+  @@map("simulacoes")
+}
+
+// Event Model (para agenda)
+model Event {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  client    String
+  type      String // Visita, Reunião, Follow-up
+  datetime  DateTime
+  location  String
+  status    String   @default("Pendente") // Pendente, Confirmado, Reagendado
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("events")
+}

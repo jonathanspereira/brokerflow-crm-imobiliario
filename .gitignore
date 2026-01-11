@@ -1,0 +1,165 @@
+# ========================================
+# Dependencies
+# ========================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnp
+.pnp.js
+
+# ========================================
+# Environment Variables
+# ========================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
+
+# ========================================
+# Build Outputs
+# ========================================
+dist/
+build/
+.next/
+out/
+*.log
+
+# ========================================
+# Testing
+# ========================================
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+playwright/.cache/
+
+# ========================================
+# ================================
+# Dependências
+node_modules/
+
+# Next.js build
+.next/
+# IDE / Editor
+# ========================================
+.vscode/
+
+# Arquivos de ambiente (segurança)
+.env
+.env.local
+
+# Logs
+npm-debug.log*
+.idea/
+*.swp
+
+# Arquivos do sistema
+.DS_Store
+
+# PDFs muito grandes (Opcional - veja nota abaixo)
+*.pdf
+*.swo
+*~
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+
+# ========================================
+# OS
+# ========================================
+# ===============================
+# Dependências
+node_modules/
+
+# Next.js build
+.next/
+.DS_Store
+.DS_Store?
+._*
+
+# Arquivos de ambiente (segurança)
+.env
+.env.local
+
+# Logs
+npm-debug.log*
+.Spotlight-V100
+.Trashes
+
+# Arquivos do sistema
+.DS_Store
+
+# PDFs muito grandes (Opcional - veja nota abaixo)
+*.pdf
+ehthumbs.db
+Thumbs.db
+
+# ========================================
+# Database
+# ========================================
+*.db
+*.sqlite
+*.sqlite3
+prisma/dev.db
+prisma/dev.db-journal
+
+# ========================================
+# Logs
+# ========================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+pnpm-debug.log*
+
+# ========================================
+# WhatsApp Data (sensitive)
+# ========================================
+whatsapp_data/
+.puppeteerrc.cjs
+
+# ========================================
+# Docker
+# ========================================
+docker-compose.override.yml
+.dockerignore.local
+
+# ========================================
+# Secrets (NEVER COMMIT)
+# ========================================
+secrets/
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# ========================================
+# TypeScript
+# ========================================
+*.tsbuildinfo
+.tsbuildinfo
+
+# ========================================
+# Temporary Files
+# ========================================
+tmp/
+temp/
+.cache/
+*.tmp
+*.bak
+
+
+
+
+# ========================================
+# Production Configs (use .example instead)
+# ========================================
+# Keep .env.production.example but ignore real configs
+# .env.production (commented - this SHOULD be tracked in some orgs)
